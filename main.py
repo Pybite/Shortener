@@ -7,50 +7,61 @@ from psycopg.rows import TupleRow
 from werkzeug.wrappers.response import Response
 
 
-c: dict = dv('.env') #loads env file
-PORT: int = c['SPORT']
+c: dict = dv(".env")  # loads env file
+PORT: int = c["SPORT"]
 app: Flask = Flask(__name__)
 
 # connect to postgres database
-conn: Connection[TupleRow] = psycopg.connect(dbname= c['DATABASE'], user= c['USER'], password= c['PASSWORD'], host= c['HOST'], port= c['PORT'])
-
+conn: Connection[TupleRow] = psycopg.connect(
+    dbname=c["DATABASE"],
+    user=c["USER"],
+    password=c["PASSWORD"],
+    host=c["HOST"],
+    port=c["PORT"],
+)
 
 
 def xcode(id: int) -> str:
-    characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    base = len(characters)
-    ret_val: list = []
+    characters: str = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    base: int = len(characters)
+    ret_val: list[str] = []
     while id > 0:
         val: int = id % base
         ret_val.append(characters[val])
-        id =  id // base
-    return ''.join(ret_val[::-1])
+        id = id // base
+    return "".join(ret_val[::-1])
 
 
-@app.route('/')
+@app.route("/")
 def index() -> str:
-    return render_template('index.html')
+    return render_template("index.html")
 
-@app.route('/api/new', methods=['POST', 'GET'])
+
+@app.route("/api/new", methods=["POST", "GET"])
 def url_short() -> Response | str:
-    if request.method == 'POST':
-        u: str = request.form['long_url']
+
+    if request.method == "POST":
+        u: str = request.form["long_url"]
         _: str = xcode(len(u) * 10000)
 
         try:
             with conn.cursor() as c:
-                c.execute("INSERT INTO urls (name,long_url, short_url) VALUES(%s, %s, %s)", ( 'config_err', u, _ ) )
+                c.execute(
+                    "INSERT INTO urls (name,long_url, short_url) VALUES(%s, %s, %s)",
+                    ("config_err", u, _),
+                )
                 conn.commit()
             conn.close()
-            print(f'shrink.com/{_}')
-            return render_template('index.html')
+            print(f"localhost/{_}")
+            return render_template("index.html")
+
         except InFailedSqlTransaction:
-            print('transaction error')
-            return redirect('/')
+            print("transaction error")
+            return redirect("/")
 
     else:
-        return render_template('index.html')
+        return render_template("index.html")
 
 
-if __name__ == '__main__':
-    app.run(c['HOST'], PORT, debug=True)
+if __name__ == "__main__":
+    app.run(c["HOST"], PORT, debug=True)
