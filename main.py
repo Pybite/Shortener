@@ -12,14 +12,16 @@ PORT: int = c["SPORT"]
 app: Flask = Flask(__name__)
 
 # connect to postgres database
-conn: Connection[TupleRow] = psycopg.connect(
-    dbname=c["DATABASE"],
-    user=c["USER"],
-    password=c["PASSWORD"],
-    host=c["HOST"],
-    port=c["PORT"],
-)
-
+try:
+    conn: Connection[TupleRow] = psycopg.connect(
+        dbname=c["DATABASE"],
+        user=c["USER"],
+        password=c["PASSWORD"],
+        host=c["HOST"],
+        port=c["PORT"],
+    )
+except psycopg.OperationalError:
+    print('DB server not started !!! please start DB server')
 
 def xcode(id: int) -> str:
     characters: str = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -37,7 +39,7 @@ def index() -> str:
     return render_template("index.html")
 
 
-@app.route("/api/new", methods=["POST", "GET"])
+@app.route("/", methods=["POST", "GET"])
 def url_short() -> Response | str:
 
     if request.method == "POST":
@@ -51,9 +53,9 @@ def url_short() -> Response | str:
                     ("config_err", u, _),
                 )
                 conn.commit()
-            conn.close()
+            
             print(f"localhost/{_}")
-            return render_template("index.html")
+            return render_template("index.html", short_url=_)
 
         except InFailedSqlTransaction:
             print("transaction error")
@@ -61,6 +63,14 @@ def url_short() -> Response | str:
 
     else:
         return render_template("index.html")
+
+
+@app.route('/<url>')
+def decode(url) -> Response:
+    with conn.cursor() as c:
+        c.execute("SELECT * FROM urls WHERE short_url = %s", [url])
+        d = c.fetchone()
+        return redirect(d[2])
 
 
 if __name__ == "__main__":
