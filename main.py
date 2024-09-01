@@ -34,11 +34,6 @@ def xcode(id: int) -> str:
     return "".join(ret_val[::-1])
 
 
-@app.route("/")
-def index() -> str:
-    return render_template("index.html")
-
-
 @app.route("/", methods=["POST", "GET"])
 def url_short() -> Response | str:
 
@@ -65,13 +60,17 @@ def url_short() -> Response | str:
         return render_template("index.html")
 
 
-@app.route('/<url>')
-def decode(url) -> Response:
-    with conn.cursor() as c:
-        c.execute("SELECT * FROM urls WHERE short_url = %s", [url])
-        d = c.fetchone()
+@app.get('/<url>')
+def decode(url) -> Response | str:
+    try:
+        with conn.cursor() as c:
+            c.execute("SELECT * FROM urls WHERE short_url = %s", [url])
+            d = c.fetchone()
+            conn.commit()
         return redirect(d[2])
-
+    except TypeError:
+        print('no urls has been processed')
+        return render_template('index.html')
 
 if __name__ == "__main__":
     app.run(c["HOST"], PORT, debug=True)
